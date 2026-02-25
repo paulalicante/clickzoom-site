@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClickZoom — Screen Recording That Actually Looks Good</title>
+  <meta name="description" content="Record your screen. ClickZoom auto-zooms into every click. Polished product demos in minutes. Free trial, no credit card. Just €8.50.">
+  <link rel="icon" type="image/svg+xml" href="clickzoom-favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,800;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --brand-deep:#002B36;--brand-indigo:#073642;--brand-indigo-mid:#586E75;
+      --brand-amber:#F59E0B;--brand-orange:#F97316;--brand-red:#EF4444;
+      --brand-lavender:#93A1A1;--brand-green:#859900;
+      --bg-primary:#002B36;--bg-secondary:#073642;--bg-card:#586E75;
+      --bg-card-hover:#657B83;
+      --text-primary:#FDF6E3;--text-secondary:#93A1A1;--text-muted:#657B83;
+      --text-on-amber:#002B36;
+      --gradient-amber:linear-gradient(135deg,#F59E0B,#F97316);
+      --gradient-hero:radial-gradient(ellipse at 50% 0%,#073642 0%,#002B36 70%);
+      --gradient-glow:radial-gradient(600px circle at var(--mouse-x,50%) var(--mouse-y,30%),rgba(245,158,11,0.06) 0%,transparent 60%);
+      --max-width:1140px;--section-padding:100px 0;
+      --border-radius:12px;--border-radius-lg:20px;
+      --border-color:rgba(88,110,117,0.25);
+      --font-body:'DM Sans',sans-serif;--font-mono:'JetBrains Mono',monospace;
+      --fs-hero:clamp(2.8rem,6vw,4.8rem);--fs-h2:clamp(2rem,4vw,3rem);
+      --fs-h3:1.35rem;--fs-body:1.05rem;--fs-small:0.9rem;--lh-body:1.7;
+      --ease-out:cubic-bezier(0.16,1,0.3,1);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+    body{font-family:var(--font-body);font-size:var(--fs-body);line-height:var(--lh-body);color:var(--text-primary);background:var(--bg-primary);overflow-x:hidden}
+    a{color:var(--brand-amber);text-decoration:none}a:hover{text-decoration:underline}
+    img,svg{display:block;max-width:100%}
+    ::selection{background:var(--brand-amber);color:var(--brand-deep)}
+    .container{width:100%;max-width:var(--max-width);margin:0 auto;padding:0 24px}
+    .section{padding:var(--section-padding);position:relative}
+    .section-label{font-family:var(--font-mono);font-size:0.8rem;letter-spacing:3px;text-transform:uppercase;color:var(--brand-amber);margin-bottom:16px}
+    .section-title{font-size:var(--fs-h2);font-weight:700;letter-spacing:-0.5px;line-height:1.15;margin-bottom:20px}
+    .section-subtitle{font-size:1.15rem;color:var(--text-secondary);max-width:600px;line-height:1.65}
+    .section-header{text-align:center;margin-bottom:64px}
+    .section-header .section-subtitle{margin:0 auto}
+    .highlight{background:var(--gradient-amber);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+    .glow-line{width:100%;height:1px;background:linear-gradient(90deg,transparent 0%,rgba(245,158,11,0.2) 50%,transparent 100%)}
+
+    @keyframes fadeUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.4}}
+    @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+    @keyframes zoomPulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:0.6}50%{transform:translate(-50%,-50%) scale(1.15);opacity:0.2}}
+    .animate-on-scroll{opacity:0;transform:translateY(30px);transition:opacity 0.7s var(--ease-out),transform 0.7s var(--ease-out)}
+    .animate-on-scroll.visible{opacity:1;transform:translateY(0)}
+
+    /* NAV */
+    .nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 0;transition:background 0.3s,box-shadow 0.3s}
+    .nav.scrolled{background:rgba(0,43,54,0.9);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 1px 0 var(--border-color)}
+    .nav .container{display:flex;align-items:center;justify-content:space-between}
+    .nav-logo{height:60px;width:auto}
+    .nav-links{display:flex;align-items:center;gap:32px;list-style:none}
+    .nav-links a{color:var(--text-secondary);font-size:0.95rem;font-weight:500;transition:color 0.2s}
+    .nav-links a:hover{color:var(--text-primary);text-decoration:none}
+    .nav-cta{display:inline-flex;align-items:center;gap:8px;padding:10px 24px;background:var(--gradient-amber);color:var(--text-on-amber)!important;font-weight:600;border-radius:8px;transition:transform 0.2s,box-shadow 0.2s}
+    .nav-cta:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(245,158,11,0.3);text-decoration:none!important}
+    .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:8px}
+    .nav-toggle span{display:block;width:24px;height:2px;background:var(--text-primary);margin:5px 0;transition:0.3s}
+
+    /* BUTTONS */
+    .btn-primary{display:inline-flex;align-items:center;gap:10px;padding:16px 36px;background:var(--gradient-amber);color:var(--text-on-amber);font-size:1.05rem;font-weight:700;font-family:var(--font-body);border:none;border-radius:10px;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(245,158,11,0.35);text-decoration:none;color:var(--text-on-amber)}
+    .btn-secondary{display:inline-flex;align-items:center;gap:10px;padding:16px 36px;background:transparent;color:var(--text-primary);font-size:1.05rem;font-weight:600;font-family:var(--font-body);border:1px solid var(--border-color);border-radius:10px;cursor:pointer;transition:border-color 0.2s,background 0.2s}
+    .btn-secondary:hover{border-color:var(--text-muted);background:rgba(255,255,255,0.03);text-decoration:none;color:var(--text-primary)}
+    .btn-small{padding:12px 28px;font-size:0.95rem}
+
+    /* HERO */
+    .hero{min-height:auto;display:flex;align-items:center;justify-content:center;text-align:center;padding:140px 0 80px;background:var(--gradient-hero);position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;inset:0;background:var(--gradient-glow);pointer-events:none}
+    .hero::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(88,110,117,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(88,110,117,0.04) 1px,transparent 1px);background-size:60px 60px;mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%);-webkit-mask-image:radial-gradient(ellipse at center,black 30%,transparent 70%);pointer-events:none}
+    .hero-content{position:relative;z-index:2;max-width:820px}
+    .hero-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:100px;font-family:var(--font-mono);font-size:0.8rem;color:var(--brand-amber);margin-bottom:32px;animation:fadeUp 0.6s var(--ease-out) both}
+    .hero-badge .dot{width:6px;height:6px;background:var(--brand-red);border-radius:50%;animation:pulse-dot 2s ease infinite}
+    .hero h1{font-size:var(--fs-hero);font-weight:800;letter-spacing:-2px;line-height:1.05;margin-bottom:24px;animation:fadeUp 0.6s var(--ease-out) 0.1s both}
+    .hero-sub{font-size:1.3rem;color:var(--text-secondary);max-width:600px;margin:0 auto 20px;line-height:1.65;animation:fadeUp 0.6s var(--ease-out) 0.2s both}
+    .hero-hooks{display:flex;align-items:stretch;justify-content:center;gap:16px;flex-wrap:wrap;margin-bottom:36px;animation:fadeUp 0.6s var(--ease-out) 0.25s both}
+    .hero-hook{display:flex;align-items:center;gap:8px;font-size:0.95rem;font-weight:600;padding:14px 22px;background:#586E75;border-radius:var(--border-radius);border:1px solid rgba(147,161,161,0.2)}
+    .hero-hook .icon{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.7rem;flex-shrink:0}
+    .hook-free .icon{background:rgba(249,115,22,0.15);color:#F97316}.hook-free{color:#FDF6E3}
+    .hook-price .icon{background:rgba(249,115,22,0.15);color:#F97316}.hook-price{color:#FDF6E3}
+    .hook-no .icon{background:rgba(249,115,22,0.15);color:#F97316}.hook-no{color:#FDF6E3}
+    .hero-actions{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;animation:fadeUp 0.6s var(--ease-out) 0.3s both}
+    .hero-note{margin-top:20px;font-size:var(--fs-small);color:var(--text-muted);animation:fadeUp 0.6s var(--ease-out) 0.4s both}
+
+    /* PROOF BAR */
+    .proof-bar{padding:48px 0;border-bottom:1px solid var(--border-color);background:var(--bg-secondary)}
+    .proof-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;text-align:center}
+    .proof-stat{padding:24px 20px;background:#586E75;border-radius:var(--border-radius);border:1px solid rgba(147,161,161,0.2)}
+    .proof-number{font-size:2.4rem;font-weight:800;letter-spacing:-1px;line-height:1;margin-bottom:6px}
+    .proof-number.amber{color:var(--brand-amber)}.proof-number.green{color:var(--brand-green)}.proof-number.lav{color:var(--brand-lavender)}.proof-number.red{color:var(--brand-red)}
+    .proof-label{font-size:0.85rem;color:#C8D3D5;font-weight:500}
+
+    /* DEMO */
+    .demo-section{padding:80px 0}
+    .demo-window{max-width:900px;margin:0 auto;border-radius:var(--border-radius-lg);border:1px solid var(--border-color);background:var(--bg-card);overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.1),0 20px 60px rgba(0,0,0,0.3)}
+    .demo-titlebar{display:flex;align-items:center;gap:8px;padding:14px 18px;background:rgba(0,0,0,0.2);border-bottom:1px solid var(--border-color)}
+    .demo-dot{width:12px;height:12px;border-radius:50%}.demo-dot.r{background:#EF4444}.demo-dot.y{background:#F59E0B}.demo-dot.g{background:#859900}
+    .demo-titlebar-text{flex:1;text-align:center;font-size:0.8rem;color:var(--text-muted);font-family:var(--font-mono)}
+    .demo-body{aspect-ratio:16/9;background:linear-gradient(135deg,var(--bg-secondary),var(--bg-card));display:flex;align-items:center;justify-content:center}
+    .demo-placeholder{display:flex;flex-direction:column;align-items:center;gap:16px;color:var(--text-muted)}
+    .demo-play-btn{width:80px;height:80px;border-radius:50%;background:var(--gradient-amber);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s}
+    .demo-play-btn:hover{transform:scale(1.08);box-shadow:0 0 40px rgba(245,158,11,0.3)}
+    .demo-play-btn svg{margin-left:4px}
+
+    /* PITCH */
+    .pitch-section{padding:100px 0 60px}
+    .pitch-grid{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:center}
+    .pitch-text .section-label{margin-bottom:12px}
+    .pitch-text h2{font-size:var(--fs-h2);font-weight:700;letter-spacing:-0.5px;margin-bottom:20px;line-height:1.15}
+    .pitch-text p{color:var(--text-secondary);font-size:1.05rem;line-height:1.7;margin-bottom:16px}
+    .pitch-visual{position:relative;border-radius:var(--border-radius-lg);border:1px solid var(--border-color);background:var(--bg-card);padding:40px;overflow:hidden}
+    .pitch-visual::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gradient-amber)}
+    .before-after{display:grid;grid-template-columns:1fr auto 1fr;gap:20px;align-items:center}
+    .ba-col{text-align:center}
+    .ba-label{font-family:var(--font-mono);font-size:0.75rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+    .ba-label.before{color:var(--text-muted)}.ba-label.after{color:var(--brand-amber)}
+    .ba-box{border-radius:10px;padding:20px;min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:0.9rem}
+    .ba-box.dull{background:rgba(88,110,117,0.05);border:1px dashed rgba(88,110,117,0.15);color:var(--text-muted)}
+    .ba-box.shiny{background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.2);color:var(--text-secondary)}
+    .ba-box .ba-icon{font-size:2rem;margin-bottom:4px}
+    .ba-arrow{color:var(--brand-amber);font-size:1.5rem}
+
+    /* FEATURES */
+    .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+    .feature-card{padding:32px 28px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--border-radius);transition:border-color 0.3s,transform 0.3s,box-shadow 0.3s}
+    .feature-card:hover{border-color:rgba(245,158,11,0.25);transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,0.2)}
+    .feature-card.hero-feature{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:40px;padding:48px 40px;background:linear-gradient(135deg,var(--bg-card),rgba(245,158,11,0.03));border-color:rgba(245,158,11,0.15)}
+    .hero-feature-text{display:flex;flex-direction:column;justify-content:center}
+    .hero-feature-visual{display:flex;align-items:center;justify-content:center}
+    .zoom-illustration{width:100%;aspect-ratio:16/10;background:var(--bg-secondary);border-radius:10px;border:1px solid var(--border-color);position:relative;overflow:hidden}
+    .zoom-ring{position:absolute;border-radius:50%;border:2px solid var(--brand-amber);animation:zoomPulse 3s ease infinite}
+    .zoom-ring:nth-child(1){width:120px;height:120px;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.6}
+    .zoom-ring:nth-child(2){width:80px;height:80px;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.4;animation-delay:0.3s}
+    .zoom-ring:nth-child(3){width:40px;height:40px;top:50%;left:50%;transform:translate(-50%,-50%);opacity:0.2;animation-delay:0.6s}
+    .feature-icon{width:48px;height:48px;border-radius:10px;background:rgba(245,158,11,0.08);display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:1.4rem}
+    .feature-card h3{font-size:1.15rem;font-weight:600;margin-bottom:8px}
+    .feature-card p{color:var(--text-secondary);font-size:0.93rem;line-height:1.6}
+
+    /* SCREENSHOTS */
+    .screenshots-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
+    .screenshot-card{border-radius:var(--border-radius);border:1px solid var(--border-color);overflow:hidden;background:var(--bg-card);transition:transform 0.3s,box-shadow 0.3s}
+    .screenshot-card:hover{transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,0.25)}
+    .screenshot-img{background:linear-gradient(135deg,var(--bg-secondary),var(--bg-card));position:relative;overflow:hidden}
+    .screenshot-img img{display:block;width:100%}
+    .screenshot-img .placeholder-label{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-muted);font-size:0.85rem;z-index:1}
+    .placeholder-icon{width:40px;height:40px;border:2px dashed var(--text-muted);border-radius:8px;display:flex;align-items:center;justify-content:center;opacity:0.5}
+    .screenshot-caption{padding:16px 20px;font-size:0.9rem;font-weight:500;color:var(--text-secondary)}
+
+    /* PRICING */
+    .pricing-section{text-align:center}
+    .pricing-wrapper{display:grid;grid-template-columns:1fr 1fr;gap:32px;max-width:800px;margin:0 auto}
+    .pricing-card{padding:48px 36px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--border-radius-lg);position:relative;overflow:hidden;text-align:center}
+    .pricing-card.featured{border:2px solid rgba(245,158,11,0.3)}
+    .pricing-card.featured::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gradient-amber)}
+    .pricing-tag{display:inline-block;padding:4px 14px;border-radius:100px;font-family:var(--font-mono);font-size:0.75rem;font-weight:600;letter-spacing:1px;margin-bottom:24px}
+    .pricing-card.free .pricing-tag{background:rgba(133,153,0,0.1);color:var(--brand-green)}
+    .pricing-card.featured .pricing-tag{background:rgba(245,158,11,0.1);color:var(--brand-amber)}
+    .pricing-amount{font-size:4rem;font-weight:800;letter-spacing:-3px;line-height:1;margin-bottom:4px}
+    .pricing-card.free .pricing-amount{color:var(--brand-green)}
+    .pricing-currency{font-size:2rem;vertical-align:super;opacity:0.7;margin-right:2px}
+    .pricing-period{font-size:0.9rem;color:var(--text-muted);margin-bottom:28px}
+    .pricing-features{text-align:left;list-style:none;margin-bottom:32px}
+    .pricing-features li{padding:9px 0;color:var(--text-secondary);font-size:0.9rem;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(88,110,117,0.06)}
+    .pricing-features li:last-child{border-bottom:none}
+    .pricing-features .li-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;flex-shrink:0}
+    .li-icon.green{background:rgba(133,153,0,0.1);color:var(--brand-green)}
+    .li-icon.amber{background:rgba(245,158,11,0.1);color:var(--brand-amber)}
+    .li-icon.muted{background:rgba(101,123,131,0.1);color:var(--text-muted)}
+    .honesty-box{max-width:600px;margin:40px auto 0;padding:32px 36px;background:rgba(245,158,11,0.03);border:1px solid rgba(245,158,11,0.12);border-radius:var(--border-radius);text-align:center}
+    .honesty-box p{color:var(--text-secondary);font-size:1rem;line-height:1.7}
+    .honesty-box strong{color:var(--brand-amber);font-weight:700}
+    .honesty-box .honesty-title{font-family:var(--font-mono);font-size:0.8rem;letter-spacing:2px;text-transform:uppercase;color:var(--brand-amber);margin-bottom:12px}
+
+    /* COMPARISON */
+    .comparison-table{max-width:700px;margin:0 auto;border-radius:var(--border-radius);border:1px solid var(--border-color);overflow:hidden}
+    .comparison-row{display:grid;grid-template-columns:2fr 1fr 1fr;border-bottom:1px solid var(--border-color)}
+    .comparison-row:last-child{border-bottom:none}
+    .comparison-row.header{background:rgba(245,158,11,0.06);font-weight:600;font-size:0.9rem}
+    .comparison-cell{padding:16px 20px;font-size:0.93rem;display:flex;align-items:center}
+    .comparison-cell:not(:first-child){justify-content:center;text-align:center}
+    .comparison-row:not(.header) .comparison-cell:first-child{color:var(--text-secondary)}
+    .check{color:#859900;font-weight:700;font-size:1.2rem}.cross{color:var(--text-muted);font-size:1.2rem}
+    .comparison-row.highlight-row{background:rgba(245,158,11,0.04)}
+
+    /* REVIEWS */
+    .reviews-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+    .review-card{padding:32px 28px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--border-radius);position:relative;transition:transform 0.3s}
+    .review-card:hover{transform:translateY(-3px)}
+    .review-stars{color:var(--brand-amber);font-size:1rem;margin-bottom:16px;letter-spacing:2px}
+    .review-text{font-size:0.98rem;color:var(--text-secondary);line-height:1.65;font-style:italic;margin-bottom:20px}
+    .review-author{display:flex;align-items:center;gap:12px}
+    .review-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;flex-shrink:0}
+    .review-name{font-size:0.9rem;font-weight:600;color:var(--text-primary)}
+    .review-role{font-size:0.8rem;color:var(--text-muted)}
+    .review-badge{position:absolute;top:16px;right:16px;padding:3px 10px;border-radius:100px;font-size:0.7rem;font-weight:600;font-family:var(--font-mono);letter-spacing:0.5px}
+    .badge-legit{background:rgba(239,68,68,0.1);color:#EF4444}
+    .badge-real{background:rgba(133,153,0,0.1);color:#859900}
+    .badge-suspicious{background:rgba(245,158,11,0.1);color:var(--brand-amber)}
+
+    /* STEPS */
+    .steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
+    .step-card{position:relative;padding:40px 28px 32px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--border-radius);transition:border-color 0.3s,transform 0.3s}
+    .step-card:hover{border-color:rgba(245,158,11,0.3);transform:translateY(-4px)}
+    .step-number{position:absolute;top:-18px;left:24px;width:36px;height:36px;background:var(--gradient-amber);color:var(--text-on-amber);font-weight:700;font-size:0.95rem;border-radius:8px;display:flex;align-items:center;justify-content:center}
+    .step-card h3{font-size:var(--fs-h3);font-weight:600;margin-bottom:10px}
+    .step-card p{color:var(--text-secondary);font-size:0.95rem}
+    .steps-grid .step-card:not(:last-child)::after{content:'';position:absolute;top:50%;right:-17px;width:34px;height:2px;background:var(--border-color)}
+
+    /* CTA */
+    .cta-banner{text-align:center;padding:100px 0 120px}
+    .cta-banner h2{font-size:var(--fs-h2);font-weight:700;letter-spacing:-0.5px;margin-bottom:16px}
+    .cta-banner p{color:var(--text-secondary);font-size:1.1rem;margin-bottom:36px}
+
+    /* FOOTER */
+    .footer{padding:48px 0;border-top:1px solid var(--border-color)}
+    .footer-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+    .footer-left{display:flex;align-items:center;gap:12px;color:var(--text-muted);font-size:0.9rem}
+    .footer-logo{height:28px}
+    .footer-links{display:flex;gap:24px;list-style:none}
+    .footer-links a{color:var(--text-muted);font-size:0.9rem;transition:color 0.2s}
+    .footer-links a:hover{color:var(--text-secondary);text-decoration:none}
+    .footer-made{color:var(--text-muted);font-size:0.85rem}
+
+    /* HERO REVIEWS — inside the hero itself */
+    .hero-reviews-strip{margin-top:48px;padding-top:40px;border-top:1px solid rgba(88,110,117,0.12);animation:fadeUp 0.6s var(--ease-out) 0.5s both}
+    .hero-reviews-intro{font-size:0.95rem;color:var(--text-muted);font-style:italic;text-align:center;margin-bottom:24px}
+    .hero-reviews-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:left}
+    .hr-card{padding:20px 18px;background:#586E75;border:1px solid rgba(147,161,161,0.2);border-radius:var(--border-radius);position:relative}
+    .hr-card .review-badge{top:10px;right:10px}
+    .hr-stars{color:var(--brand-amber);font-size:0.85rem;margin-bottom:10px;letter-spacing:2px}
+    .hr-text{font-size:0.88rem;color:#FDF6E3;line-height:1.6;font-style:italic;margin-bottom:14px}
+    .hr-author{display:flex;align-items:center;gap:10px}
+    .hr-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;flex-shrink:0}
+    .hr-name{font-size:0.82rem;font-weight:600;color:#FDF6E3}
+    .hr-role{font-size:0.72rem;color:#C8D3D5}
+
+    /* RESPONSIVE */
+    @media(max-width:900px){
+      .proof-grid{grid-template-columns:repeat(2,1fr)}
+      .steps-grid{grid-template-columns:1fr;gap:48px}.steps-grid .step-card::after{display:none}
+      .features-grid{grid-template-columns:1fr 1fr}
+      .feature-card.hero-feature{grid-template-columns:1fr}
+      .hero-reviews-grid{grid-template-columns:1fr}
+      .reviews-grid{grid-template-columns:1fr}
+      .screenshots-grid{grid-template-columns:1fr}
+      .pitch-grid{grid-template-columns:1fr;gap:40px}
+      .pricing-wrapper{grid-template-columns:1fr;max-width:420px}
+    }
+    @media(max-width:640px){
+      :root{--section-padding:64px 0}
+      .nav-links{display:none}.nav-toggle{display:block}
+      .features-grid{grid-template-columns:1fr}
+      .hero-actions{flex-direction:column}
+      .hero-actions .btn-primary,.hero-actions .btn-secondary{width:100%;justify-content:center}
+      .hero-hooks{flex-direction:column;gap:12px}
+      .proof-grid{grid-template-columns:1fr 1fr}
+      .pricing-amount{font-size:3rem}
+      .before-after{grid-template-columns:1fr;gap:12px}.ba-arrow{transform:rotate(90deg)}
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <div class="container">
+    <a href="#">
+      <svg class="nav-logo" viewBox="0 0 400 120" height="60">
+        <defs>
+          <linearGradient id="nlA" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#F97316"/></linearGradient>
+          <linearGradient id="nlB" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#002B36"/><stop offset="100%" stop-color="#073642"/></linearGradient>
+        </defs>
+        <rect x="0" y="5" width="400" height="105" rx="16" fill="url(#nlB)"/>
+        <g transform="translate(14,14)">
+          <rect x="4" y="4" width="78" height="78" rx="6" fill="none" stroke="url(#nlA)" stroke-width="2.5"/>
+          <rect x="10" y="8" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/><rect x="23" y="8" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/><rect x="36" y="8" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/><rect x="49" y="8" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/><rect x="62" y="8" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/>
+          <rect x="10" y="72" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/><rect x="23" y="72" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/><rect x="36" y="72" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/><rect x="49" y="72" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/><rect x="62" y="72" width="8" height="6" rx="1.5" fill="url(#nlA)" opacity="0.5"/>
+          <rect x="10" y="18" width="66" height="50" rx="3" fill="url(#nlA)" opacity="0.08"/>
+          <circle cx="43" cy="43" r="18" fill="none" stroke="url(#nlA)" stroke-width="1.5" opacity="0.35"/>
+          <circle cx="43" cy="43" r="11" fill="none" stroke="url(#nlA)" stroke-width="1.2" opacity="0.25"/>
+          <g transform="translate(32,28)"><path d="M0 0L0 22L6 17L11 27L15 25L10 15L17 15Z" fill="url(#nlA)" stroke="white" stroke-width="1.2" stroke-linejoin="round"/></g>
+          <circle cx="18" cy="24" r="3.5" fill="#EF4444"/>
+        </g>
+        <text x="108" y="62" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="46" font-weight="700" letter-spacing="-1"><tspan fill="white">Click</tspan><tspan fill="url(#nlA)">Zoom</tspan></text>
+        <text x="108" y="88" font-family="system-ui,-apple-system,'Segoe UI',sans-serif" font-size="12" font-weight="400" fill="#93A1A1" letter-spacing="3">RECORD · POLISH · DEMO</text>
+      </svg>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#screenshots">Screenshots</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+      <li><a href="#download" class="nav-cta">Free Download</a></li>
+    </ul>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="container">
+    <div class="hero-content">
+      <div class="hero-badge"><span class="dot"></span> Windows 10/11</div>
+      <h1>Record anything.<br><span class="highlight">Look professional.</span></h1>
+      <p class="hero-sub">ClickZoom records your screen and automatically adds smooth zoom animations to every mouse click. Product demos, tutorials, walkthroughs — done in minutes, not hours.</p>
+      <div class="hero-hooks">
+        <div class="hero-hook hook-free"><span class="icon">✓</span> Free trial — no credit card</div>
+        <div class="hero-hook hook-price"><span class="icon">€</span> Just €8.50 to unlock</div>
+        <div class="hero-hook hook-no"><span class="icon">∞</span> No subscription for the app</div>
+      </div>
+      <div class="hero-actions">
+        <a href="#download" class="btn-primary">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Free Download
+        </a>
+        <a href="#how" class="btn-secondary">
+          <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Watch Demo
+        </a>
+      </div>
+      <p class="hero-note">Free version is fully functional — exports with a small watermark. That's the only difference.</p>
+
+      <!-- Fake reviews right in the hero -->
+      <div class="hero-reviews-strip">
+        <p class="hero-reviews-intro">Don't just take our word for it. Actually, you probably shouldn't take theirs either.</p>
+        <div class="hero-reviews-grid">
+          <div class="hr-card">
+            <span class="review-badge badge-legit">TOTALLY REAL</span>
+            <div class="hr-stars">★★★★★</div>
+            <p class="hr-text">"I'm too old for this computer stuff but please buy this program. I'm tired of supporting him financially. He's 64. This has been going on for 45 years. I need a break."</p>
+            <div class="hr-author"><div class="hr-avatar" style="background:rgba(239,68,68,0.1);color:#EF4444">M</div><div><div class="hr-name">His Mother</div><div class="hr-role">Unpaid angel investor since 1961</div></div></div>
+          </div>
+          <div class="hr-card">
+            <span class="review-badge badge-suspicious">UNDER DURESS</span>
+            <div class="hr-stars">★★★★★</div>
+            <p class="hr-text">"Dad said I have to write a review or no WiFi for a week. ClickZoom is the greatest invention in all of human history. Can I have WiFi back now?"</p>
+            <div class="hr-author"><div class="hr-avatar" style="background:rgba(168,85,247,0.1);color:#A855F7">M</div><div><div class="hr-name">The Developer's Daughter</div><div class="hr-role">Age 13, digital hostage</div></div></div>
+          </div>
+          <div class="hr-card">
+            <span class="review-badge badge-legit">EXISTENTIAL</span>
+            <div class="hr-stars">★★★★★</div>
+            <p class="hr-text">"I was paying €75 for the other tool. Then I found ClickZoom at €8.50 and had to sit down and question every financial decision I've ever made."</p>
+            <div class="hr-author"><div class="hr-avatar" style="background:rgba(245,158,11,0.1);color:#F59E0B">S</div><div><div class="hr-name">Sarah K.</div><div class="hr-role">Product Manager, recovering overpayer</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROOF BAR -->
+<div class="proof-bar">
+  <div class="container">
+    <div class="proof-grid">
+      <div class="proof-stat"><div class="proof-number amber">€8.50</div><div class="proof-label">One-time. No tricks.</div></div>
+      <div class="proof-stat"><div class="proof-number green">Free</div><div class="proof-label">Full trial, no credit card needed</div></div>
+      <div class="proof-stat"><div class="proof-number lav">~90%</div><div class="proof-label">Cheaper than alternatives</div></div>
+      <div class="proof-stat"><div class="proof-number red">0</div><div class="proof-label">Subscriptions for core features</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- DEMO -->
+<section class="demo-section" id="how">
+  <div class="container">
+    <div class="demo-window animate-on-scroll">
+      <div class="demo-titlebar">
+        <span class="demo-dot r"></span><span class="demo-dot y"></span><span class="demo-dot g"></span>
+        <span class="demo-titlebar-text">clickzoom_demo.mp4</span>
+      </div>
+      <div class="demo-body">
+        <video autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;">
+          <source src="twoscreens.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- THE PITCH -->
+<section class="section pitch-section">
+  <div class="container">
+    <div class="pitch-grid animate-on-scroll">
+      <div class="pitch-text">
+        <div class="section-label">The magic</div>
+        <h2>You record.<br><span class="highlight">ClickZoom polishes.</span></h2>
+        <p>Hit record, use your app, stop when you're done. Every mouse click you made? ClickZoom remembers exactly where it happened, and adds smooth, professional zoom animations to each one.</p>
+        <p>No keyframing. No manual editing. No video editing degree required. Your raw screen recording goes in looking amateur. It comes out looking like you hired someone.</p>
+      </div>
+      <div class="pitch-visual">
+        <div class="before-after">
+          <div class="ba-col">
+            <div class="ba-label before">Your recording</div>
+            <div class="ba-box dull"><div class="ba-icon">📹</div>Flat, full-screen<br>tiny clicks nobody sees</div>
+          </div>
+          <div class="ba-arrow">→</div>
+          <div class="ba-col">
+            <div class="ba-label after">After ClickZoom</div>
+            <div class="ba-box shiny"><div class="ba-icon">🎬</div>Zoomed, focused<br>every click highlighted</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- HOW IT WORKS -->
+<section class="section">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="section-label">How it works</div>
+      <h2 class="section-title">Three steps. <span class="highlight">No learning curve.</span></h2>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card animate-on-scroll"><div class="step-number">1</div><h3>Record</h3><p>Pick a monitor, a window, or your entire screen. Add your webcam and mic if you want. Press record. Done.</p></div>
+      <div class="step-card animate-on-scroll"><div class="step-number">2</div><h3>Review</h3><p>Every click appears on a visual timeline. Adjust zoom levels, add text labels, trim the start and end. Or just leave it — the defaults are good.</p></div>
+      <div class="step-card animate-on-scroll"><div class="step-number">3</div><h3>Export</h3><p>Hit export. Get a polished MP4 with smooth zoom animations, or an interactive HTML walkthrough your users can click through themselves.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="section-label">Features</div>
+      <h2 class="section-title">A proper recording studio.<br><span class="highlight">Not just a gimmick.</span></h2>
+      <p class="section-subtitle">ClickZoom is a full screen recorder with webcam, audio, timeline editing, and a trick up its sleeve.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card hero-feature animate-on-scroll">
+        <div class="hero-feature-text">
+          <div class="feature-icon">🎯</div>
+          <h3 style="font-size:1.4rem">Auto-Zoom to Every Click</h3>
+          <p>The headline feature. Every mouse click gets a smooth, cubic-eased zoom animation. Configurable per-click — set zoom level from 1.5x to 4x, hold duration, and more. Your viewers never miss what you're showing them.</p>
+        </div>
+        <div class="hero-feature-visual">
+          <div class="zoom-illustration">
+            <div class="zoom-ring"></div><div class="zoom-ring"></div><div class="zoom-ring"></div>
+            <svg style="position:absolute;top:calc(50% - 14px);left:calc(50% - 6px);width:20px;height:28px" viewBox="0 0 17 27"><path d="M0 0L0 22L6 17L11 27L15 25L10 15L17 15Z" fill="#F59E0B" stroke="white" stroke-width="1.2" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+      </div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">📸</div><h3>Webcam Picture-in-Picture</h3><p>Show your face alongside your screen with a live webcam overlay. Preview it in real-time before you start recording.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">🎙️</div><h3>Microphone Audio</h3><p>Record voice narration alongside your screen. Captured as AAC and muxed into the final MP4 automatically.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">🖥️</div><h3>Multi-Monitor Support</h3><p>Multiple screens? Pick the one you want. Or record a specific window. The source picker shows live thumbnails so you always know what you're getting.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">✂️</div><h3>Timeline Editor</h3><p>Visual timeline with all your zoom points. Drag to reposition, delete the ones you don't want, add new ones manually. Trim start and end points. Full control, zero complexity.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">🔗</div><h3>Add to Existing Videos</h3><p>Already have a recording? Import it. Append or prepend clips from different sessions. Different aspect ratios are letterboxed automatically. Build complete walkthroughs from pieces.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">💬</div><h3>Text Labels &amp; Emoji Overlays</h3><p>Add text callouts to any click point. Drop in emoji to draw attention or add personality. Your demos don't have to be boring.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">🌐</div><h3>Interactive HTML Export</h3><p>Not just video — export step-by-step HTML walkthroughs. Your users click through at their own pace. Perfect for documentation and onboarding.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">⏯️</div><h3>Pause &amp; Resume</h3><p>Pause mid-recording. Grab coffee, collect your thoughts, rearrange your desktop. Resume when ready. No splicing required.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">🖱️</div><h3>Cursor &amp; Click Ripples</h3><p>Your cursor is drawn right onto the video frames. Each click gets a subtle ripple animation so viewers always know where to look.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">🪶</div><h3>Stupidly Simple UI</h3><p>Clean, modern interface. No 47-button toolbar. No preferences maze. Record, edit, export — everything is exactly where you think it is.</p></div>
+      <div class="feature-card animate-on-scroll"><div class="feature-icon">💾</div><h3>Crash-Safe Recording</h3><p>Working files are saved as MKV which survives interruptions. Your recording is safe even if your cat walks on the keyboard.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- SCREENSHOTS -->
+<section class="section" id="screenshots">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="section-label">Screenshots</div>
+      <h2 class="section-title">See it in action</h2>
+      <p class="section-subtitle">Clean interface. Zero clutter. Real screenshots, not mockups.</p>
+    </div>
+    <div class="screenshots-grid">
+      <div class="screenshot-card animate-on-scroll" style="grid-column:1/-1">
+        <div class="screenshot-img" style="background:none"><img src="screenshot-ui.png" alt="ClickZoom source selection" style="width:100%;height:100%;object-fit:cover"></div>
+        <div class="screenshot-caption">Source selection — pick any monitor or window, configure webcam and audio</div>
+      </div>
+      <div class="screenshot-card animate-on-scroll">
+        <div class="screenshot-img" style="background:none"><img src="screenshot-full.png" alt="Full recording view" style="width:100%;height:100%;object-fit:cover"></div>
+        <div class="screenshot-caption">Your recording before ClickZoom — flat, full-screen capture</div>
+      </div>
+      <div class="screenshot-card animate-on-scroll">
+        <div class="screenshot-img" style="background:none"><img src="screenshot-zoom.png" alt="Zoom animation in action" style="width:100%;height:100%;object-fit:cover"></div>
+        <div class="screenshot-caption">After ClickZoom — auto-zoomed into the click, smooth and focused</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- COMPARISON -->
+<section class="section" id="compare">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="section-label">Vs the competition</div>
+      <h2 class="section-title">Same result. <span class="highlight">Different price tag.</span></h2>
+      <p class="section-subtitle">We built the same core feature as tools charging 10x more, then added things they haven't.</p>
+    </div>
+    <div class="comparison-table animate-on-scroll">
+      <div class="comparison-row header">
+        <div class="comparison-cell">Feature</div>
+        <div class="comparison-cell" style="color:var(--brand-amber)">ClickZoom</div>
+        <div class="comparison-cell" style="color:var(--text-muted)">Others*</div>
+      </div>
+      <div class="comparison-row"><div class="comparison-cell">Auto-zoom to clicks</div><div class="comparison-cell"><span class="check">✓</span></div><div class="comparison-cell"><span class="check">✓</span></div></div>
+      <div class="comparison-row"><div class="comparison-cell">Per-click zoom &amp; hold control</div><div class="comparison-cell"><span class="check">✓</span></div><div class="comparison-cell"><span class="cross">✗</span></div></div>
+      <div class="comparison-row"><div class="comparison-cell">Webcam PiP</div><div class="comparison-cell"><span class="check">✓</span></div><div class="comparison-cell"><span class="check">✓</span></div></div>
+      <div class="comparison-row"><div class="comparison-cell">Interactive HTML export</div><div class="comparison-cell"><span class="check">✓</span></div><div class="comparison-cell"><span class="cross">✗</span></div></div>
+      <div class="comparison-row"><div class="comparison-cell">Import &amp; merge existing videos</div><div class="comparison-cell"><span class="check">✓</span></div><div class="comparison-cell"><span class="cross">✗</span></div></div>
+      <div class="comparison-row"><div class="comparison-cell">Free trial (full features)</div><div class="comparison-cell"><span class="check">✓</span></div><div class="comparison-cell"><span class="cross">✗</span></div></div>
+      <div class="comparison-row highlight-row"><div class="comparison-cell" style="font-weight:600;color:var(--text-primary)">Price</div><div class="comparison-cell" style="font-weight:700;color:var(--brand-amber)">€8.50</div><div class="comparison-cell" style="color:var(--text-muted)">€75+</div></div>
+    </div>
+    <p style="text-align:center;color:var(--text-muted);font-size:0.8rem;margin-top:16px">* Based on comparable auto-zoom screen recorders at time of launch.</p>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- PRICING -->
+<section class="section pricing-section" id="pricing">
+  <div class="container">
+    <div class="section-header animate-on-scroll">
+      <div class="section-label">Pricing</div>
+      <h2 class="section-title">Try everything. <span class="highlight">Pay when you're ready.</span></h2>
+      <p class="section-subtitle">The free version is the full app. The only difference is a small watermark on export. Test everything first — we'll earn your money.</p>
+    </div>
+    <div class="pricing-wrapper animate-on-scroll">
+      <div class="pricing-card free">
+        <div class="pricing-tag">FREE FOREVER</div>
+        <div class="pricing-amount">€0</div>
+        <div class="pricing-period">No credit card. No signup.</div>
+        <ul class="pricing-features">
+          <li><span class="li-icon green">✓</span> All recording features</li>
+          <li><span class="li-icon green">✓</span> Webcam, audio, multi-monitor</li>
+          <li><span class="li-icon green">✓</span> Full timeline editor</li>
+          <li><span class="li-icon green">✓</span> All zoom animations</li>
+          <li><span class="li-icon green">✓</span> MP4 + HTML export</li>
+          <li><span class="li-icon muted">~</span> Small watermark on export</li>
+        </ul>
+        <a href="#download" class="btn-secondary btn-small" style="width:100%;justify-content:center">Free Download</a>
+      </div>
+      <div class="pricing-card featured">
+        <div class="pricing-tag">FULL LICENSE</div>
+        <div class="pricing-amount"><span class="pricing-currency">€</span>8.50</div>
+        <div class="pricing-period">One-time. Forever.</div>
+        <ul class="pricing-features">
+          <li><span class="li-icon amber">✓</span> Everything in Free</li>
+          <li><span class="li-icon amber">✓</span> No watermark</li>
+          <li><span class="li-icon amber">✓</span> Free updates (current version)</li>
+          <li><span class="li-icon amber">✓</span> Priority support</li>
+          <li><span class="li-icon amber">✓</span> Eternal gratitude</li>
+        </ul>
+        <a href="#download" class="btn-primary btn-small" style="width:100%;justify-content:center">Buy — €8.50</a>
+      </div>
+    </div>
+    <div class="honesty-box animate-on-scroll">
+      <div class="honesty-title">A note on the price</div>
+      <p>It's <strong>€8.50</strong>. Not €8.99. Not €9.99. Not €8.49 with an asterisk.<br>Just eight euros and fifty cents. A round, honest number.<br>We're not going to pretend €9.99 isn't basically ten euros.<br>You're smart. We respect that. Here's a normal price.</p>
+    </div>
+  </div>
+</section>
+
+<div class="glow-line"></div>
+
+<!-- FINAL CTA -->
+<section class="cta-banner" id="download">
+  <div class="container animate-on-scroll">
+    <h2>Stop making ugly demos.</h2>
+    <p>Download ClickZoom free. Record your thing. Look like a pro.<br>If you like it, it's €8.50. If you don't, it cost you nothing.</p>
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+      <a href="#" class="btn-primary" style="font-size:1.1rem;padding:18px 44px">
+        <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download for Windows — Free
+      </a>
+    </div>
+    <p style="color:var(--text-muted);font-size:0.9rem;margin-top:20px">Windows 10/11 · No installer — just unzip and run · ~25 MB</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <div class="footer-left">
+        <svg class="footer-logo" viewBox="0 0 32 32" height="28">
+          <defs><linearGradient id="fga" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#F97316"/></linearGradient><linearGradient id="fgb" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#002B36"/><stop offset="100%" stop-color="#073642"/></linearGradient></defs>
+          <rect x="0" y="0" width="32" height="32" rx="7" fill="url(#fgb)"/>
+          <line x1="6" y1="6" x2="26" y2="6" stroke="url(#fga)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/><line x1="6" y1="26" x2="26" y2="26" stroke="url(#fga)" stroke-width="1.5" stroke-linecap="round" opacity="0.5"/>
+          <g transform="translate(11,10)"><path d="M0 0L0 12L3.5 9L6 14L8.5 13L6 8L10 8Z" fill="url(#fga)" stroke="white" stroke-width="0.7" stroke-linejoin="round"/></g>
+          <circle cx="24" cy="11" r="2" fill="#EF4444"/>
+        </svg>
+        <span>© 2026 ClickZoom</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="#">Privacy</a></li>
+        <li><a href="#">Terms</a></li>
+        <li><a href="#">Support</a></li>
+        <li><a href="https://github.com/paulalicante" target="_blank">GitHub</a></li>
+      </ul>
+      <div class="footer-made">Made with ☕ in Alicante</div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  const nav=document.getElementById('nav');
+  window.addEventListener('scroll',()=>{nav.classList.toggle('scrolled',window.scrollY>40)},{passive:true});
+  const observer=new IntersectionObserver((entries)=>{entries.forEach(entry=>{if(entry.isIntersecting){const siblings=entry.target.parentElement.querySelectorAll('.animate-on-scroll');const idx=Array.from(siblings).indexOf(entry.target);entry.target.style.transitionDelay=`${idx*0.08}s`;entry.target.classList.add('visible');observer.unobserve(entry.target)}})},{threshold:0.12});
+  document.querySelectorAll('.animate-on-scroll').forEach(el=>observer.observe(el));
+  const hero=document.querySelector('.hero');
+  hero.addEventListener('mousemove',(e)=>{const rect=hero.getBoundingClientRect();hero.style.setProperty('--mouse-x',((e.clientX-rect.left)/rect.width*100)+'%');hero.style.setProperty('--mouse-y',((e.clientY-rect.top)/rect.height*100)+'%')});
+  let mobileOpen=false;
+  document.getElementById('navToggle')?.addEventListener('click',()=>{mobileOpen=!mobileOpen;const nl=document.querySelector('.nav-links');if(mobileOpen){nl.style.cssText='display:flex;flex-direction:column;position:absolute;top:100%;left:0;right:0;background:rgba(0,43,54,0.97);padding:24px;backdrop-filter:blur(20px);border-bottom:1px solid var(--border-color);gap:20px'}else{nl.style.cssText=''}});
+  document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener('click',(e)=>{const target=document.querySelector(a.getAttribute('href'));if(target){e.preventDefault();target.scrollIntoView({behavior:'smooth',block:'start'})}if(mobileOpen){mobileOpen=false;document.querySelector('.nav-links').style.cssText=''}})});
+</script>
+</body>
+</html>
