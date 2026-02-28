@@ -1,5 +1,5 @@
 {
-  "version": "0.94",
-  "download_url": "https://clickzoom.click/download",
-  "release_notes": "Monetization system, update checker, improved watermarks."
+  "version": "0.97",
+  "download_url": "https://github.com/paulalicante/ClickZoom/releases/download/v0.97/ClickZoom_Setup_0.97.exe",
+  "release_notes": "Windows 11 compatibility fixes, improved webcam recording."
 }
